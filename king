@@ -1,0 +1,47 @@
+# FUEL and main Openstack Network Communication Interfaces Configuration
+
+auto p1p1
+iface p1p1 inet manual
+
+auto p2p1
+iface p2p1 inet manual
+post-up /usr/bin/ovs-vsctl --may-exist add-br ovs-br0
+post-up /usr/bin/ovs-vsctl add-bond ovs-br0 ovs-bond0 p1p1 p2p1 bond_mode=balance-tcp lacp=active other_config:lacp-time=fast other_config:lacp-fallback-ab=true
+
+# Host OAM Configuration
+auto em49
+iface em49 inet manual
+post-up /usr/bin/ovs-vsctl --may-exist add-br ovs-brfuel
+post-up /usr/bin/ovs-vsctl --may-exist add-port ovs-brfuel em49
+
+# Mongo and Glance Storage Network Communication Interfaces Configuration
+
+auto p1p2
+iface p1p2 inet manual
+
+auto p2p2
+iface p2p2 inet manual
+post-up /usr/bin/ovs-vsctl --may-exist add-br ovs-br1
+post-up /usr/bin/ovs-vsctl add-bond ovs-br1 ovs-bond1 p1p2 p2p2 trunks=13,33
+
+# Mongo External VNX5500 Storage Communication Mounted on Mongo VMs
+allow-ovs-br1 vlan33-mongo
+iface vlan33-mongo inet static
+  ovs_type OVSIntPort
+  ovs_bridge ovs-br1
+  ovs_options tag=33
+  ovs_extra set interface ${IFACE} external-ids:iface-id=$(hostname -s)-${IFACE}-vif
+  address 10.111.192.4
+  netmask 255.255.255.0
+  mtu 9000
+
+# Glance-Swift ExternalHP MSA 2040 Storage Communication Mounted on Controller VMs
+allow-ovs-br1 vlan13-glance
+iface vlan13-glance inet static
+  ovs_type OVSIntPort
+  ovs_bridge ovs-br1
+  ovs_options tag=13
+  ovs_extra set interface ${IFACE} external-ids:iface-id=$(hostname -s)-${IFACE}-vif
+  address 192.168.102.200
+  netmask 255.255.255.0
+  mtu 9000
